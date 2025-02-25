@@ -147,7 +147,7 @@ fun Screen(
                 )
                 Canvas(modifier = Modifier
                     .size(80.dp)
-                    .offset(0.dp, 25.dp)) {
+                    .offset(0.dp, 20.dp)) {
                     drawCircle(
                         color = Color.White,
                         radius = size.minDimension / 2
