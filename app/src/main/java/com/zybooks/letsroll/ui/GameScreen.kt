@@ -1,5 +1,6 @@
 package com.zybooks.letsroll.ui
 
+import android.util.Log
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Text
@@ -15,6 +16,22 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.delay
 
+fun generateSinePath(
+    screenHeight: Float,
+    screenWidth: Float,
+    startY: Float = 0f,
+): List<Offset> {
+    val points = mutableListOf<Offset>()
+    val amplitude = ((screenWidth / 4).toInt()..(screenWidth / 2).toInt()).random() // width
+    val frequency = (1..3).random() * 0.002f
+    val phaseShift = (0..360).random().toFloat()
+
+    for (y in startY.toInt()..(screenHeight + startY).toInt() step 10) {
+        val x = amplitude * kotlin.math.cos(frequency * y + phaseShift) + (screenWidth / 2)
+        points.add(Offset(x, y.toFloat()))
+    }
+    return points
+}
 
 
 @Composable
@@ -43,6 +60,10 @@ fun GameScreen(
     var screenWidth by remember { mutableStateOf(0f) }
     var screenHeight by remember { mutableStateOf(0f) }
 
+    var currentYLim by remember { mutableStateOf(0f)}
+
+    var pathPoints by remember { mutableStateOf(generateSinePath(screenHeight, screenWidth)) }
+
     if (loading && screenWidth > 0F && screenHeight > 0F) {
         loading = false
         ballX = screenWidth / 2
@@ -61,31 +82,48 @@ fun GameScreen(
             ballY += velocityY
             shadowOffsetX = -velocityX
             shadowOffsetY = -velocityY
+
+            val s = pathPoints.size
+            Log.d("GameScreen", "ballY: $s")
+
+            if (ballY < currentYLim && pathPoints.isNotEmpty()) {
+                currentYLim -= screenHeight
+                val path = generateSinePath(screenHeight, screenWidth, pathPoints[pathPoints.size-2].y)
+                pathPoints = pathPoints + path
+            }
+
+            if (pathPoints.size > 500) {
+                pathPoints = pathPoints.drop(50)
+            }
             delay(16L) // 60 FPS (update rate)
         }
+    }
+
+    LaunchedEffect(Unit) {
+        pathPoints = generateSinePath(screenHeight, screenWidth)
     }
 
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        // game board
         Canvas(modifier = Modifier.fillMaxSize()) {
             drawCircle(
                 color = Color.Black,
                 center = Offset(ballX, ballY),
                 radius = 300F
             )
-            drawRect(
-                color = Color.Black,
-                topLeft = Offset(ballX - 125, ballY),
-                size = Size(250F, -3000F)
-            )
-            drawCircle(
-                color = Color.Black,
-                center = Offset(ballX, ballY - 3000F),
-                radius = 300F
-            )
+
+        }
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            for (i in 0 until pathPoints.size - 1) {
+                drawLine(
+                    color = Color.Black,
+                    start = Offset(pathPoints[i].x + ballX - 500, pathPoints[i].y + ballY),
+                    end = Offset(pathPoints[i+1].x + ballX - 500, pathPoints[i+1].y + ballY),
+                    strokeWidth = 250f
+                )
+            }
         }
 
         // ball

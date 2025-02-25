@@ -25,7 +25,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalDensity
@@ -139,15 +142,18 @@ fun Screen(
                 style = TextStyle(fontSize = 100.sp, fontWeight = FontWeight.Bold ),
                 lineHeight = 220.sp,
             )
-            Row() {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
                 Text(
                     text = "R",
                     style = TextStyle(fontSize = 100.sp, fontWeight = FontWeight.Bold ),
                     lineHeight = 220.sp,
                 )
                 Canvas(modifier = Modifier
-                    .size(80.dp)
-                    .offset(0.dp, 20.dp)) {
+                    .size(80.dp))
+                {
                     drawCircle(
                         color = Color.White,
                         radius = size.minDimension / 2
