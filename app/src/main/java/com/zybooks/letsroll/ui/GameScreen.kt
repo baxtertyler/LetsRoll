@@ -26,9 +26,26 @@ fun generateSinePath(
     val frequency = (1..3).random() * 0.002f
     val phaseShift = (0..360).random().toFloat()
 
-    for (y in startY.toInt()..(screenHeight + startY).toInt() step 10) {
+    for (y in startY.toInt()..(screenHeight + startY).toInt() step 1) {
         val x = amplitude * kotlin.math.cos(frequency * y + phaseShift) + (screenWidth / 2)
         points.add(Offset(x, y.toFloat()))
+    }
+    return points
+}
+
+fun generateCosWave(
+    startingPoint: Offset,
+    screenHeight: Float,
+    screenWidth: Float
+): List<Offset> {
+    val points = mutableListOf<Offset>()
+    val amplitude = ((screenWidth / 4).toInt()..(screenWidth / 2).toInt()).random() // width
+    val frequency = 2 * 3.14 / screenWidth
+    val phaseShift = 1
+
+    for (y in startingPoint.y.toInt()..(screenHeight / phaseShift + startingPoint.y.toInt()).toInt() step 15) {
+        val x = amplitude * kotlin.math.sin(frequency * y + phaseShift) + (screenWidth / 2)
+        points.add(Offset(x.toFloat(), y.toFloat()))
     }
     return points
 }
@@ -88,11 +105,11 @@ fun GameScreen(
 
             if (ballY < currentYLim && pathPoints.isNotEmpty()) {
                 currentYLim -= screenHeight
-                val path = generateSinePath(screenHeight, screenWidth, pathPoints[pathPoints.size-2].y)
+                val path = generateCosWave(pathPoints[pathPoints.size - 1], screenHeight, screenWidth)
                 pathPoints = pathPoints + path
             }
 
-            if (pathPoints.size > 500) {
+            if (pathPoints.size > 6000) {
                 pathPoints = pathPoints.drop(50)
             }
             delay(16L) // 60 FPS (update rate)
@@ -100,7 +117,7 @@ fun GameScreen(
     }
 
     LaunchedEffect(Unit) {
-        pathPoints = generateSinePath(screenHeight, screenWidth)
+        pathPoints = generateCosWave(Offset(screenHeight / 2, screenWidth / 2), screenHeight, screenWidth)
     }
 
     Box(
