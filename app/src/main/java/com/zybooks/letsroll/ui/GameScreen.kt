@@ -16,39 +16,66 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.delay
 
-fun generateSinePath(
+fun generateVerticalLine(
+    screenHeight: Float,
+    startPoint: Offset
+):List<Offset> {
+    val points = mutableListOf<Offset>()
+    points.add(startPoint)
+    points.add(Offset(startPoint.x, startPoint.y + screenHeight / 2))
+    return points
+}
+
+fun generateHorizontalLine(
+    screenWidth: Float,
+    startPoint: Offset,
+    toRight: Boolean,
+):List<Offset> {
+    val points = mutableListOf<Offset>()
+    points.add(startPoint)
+    if (toRight) {
+        points.add(Offset(startPoint.x + screenWidth, startPoint.y))
+    } else {
+        points.add(Offset(startPoint.x - screenWidth, startPoint.y))
+    }
+    return points
+}
+
+fun generateAngleLine(
     screenHeight: Float,
     screenWidth: Float,
-    startY: Float = 0f,
-): List<Offset> {
+    startPoint: Offset,
+    openLeft: Boolean
+):List<Offset> {
     val points = mutableListOf<Offset>()
-    val amplitude = ((screenWidth / 4).toInt()..(screenWidth / 2).toInt()).random() // width
-    val frequency = (1..3).random() * 0.002f
-    val phaseShift = (0..360).random().toFloat()
-
-    for (y in startY.toInt()..(screenHeight + startY).toInt() step 1) {
-        val x = amplitude * kotlin.math.cos(frequency * y + phaseShift) + (screenWidth / 2)
-        points.add(Offset(x, y.toFloat()))
+    points.add(startPoint)
+    points.add(Offset(startPoint.x, startPoint.y + screenHeight / 8))
+    if (openLeft) {
+        points.add(Offset(startPoint.x + screenWidth / 2, startPoint.y + screenHeight / 4 + screenHeight / 8))
+    } else {
+        points.add(Offset(startPoint.x - screenWidth / 2, startPoint.y + screenHeight / 4 + screenHeight / 8))
     }
+    points.add(Offset(startPoint.x, startPoint.y + screenHeight / 4 + screenHeight / 4 + screenHeight / 8))
+    points.add(Offset(startPoint.x, startPoint.y + screenHeight / 4 + screenHeight / 4 + screenHeight / 4 + screenHeight / 8))
     return points
 }
 
-fun generateCosWave(
-    startingPoint: Offset,
-    screenHeight: Float,
-    screenWidth: Float
-): List<Offset> {
-    val points = mutableListOf<Offset>()
-    val amplitude = ((screenWidth / 4).toInt()..(screenWidth / 2).toInt()).random() // width
-    val frequency = 2 * 3.14 / screenWidth
-    val phaseShift = 1
-
-    for (y in startingPoint.y.toInt()..(screenHeight / phaseShift + startingPoint.y.toInt()).toInt() step 15) {
-        val x = amplitude * kotlin.math.sin(frequency * y + phaseShift) + (screenWidth / 2)
-        points.add(Offset(x.toFloat(), y.toFloat()))
-    }
-    return points
-}
+//fun generateCosWave(
+//    startingPoint: Offset,
+//    screenHeight: Float,
+//    screenWidth: Float
+//): List<Offset> {
+//    val points = mutableListOf<Offset>()
+//    val amplitude = ((screenWidth / 4).toInt()..(screenWidth / 1.5).toInt()).random() // width
+//    val frequency = 2 * 3.141592653589 / screenWidth
+//    val phaseShift = 1
+//
+//    for (y in startingPoint.y.toInt()..(screenHeight / phaseShift + startingPoint.y.toInt()).toInt() step 5) {
+//        val x = amplitude * kotlin.math.sin(frequency * y + phaseShift) + (screenWidth / 2)
+//        points.add(Offset(x.toFloat(), y.toFloat()))
+//    }
+//    return points
+//}
 
 
 @Composable
@@ -77,17 +104,13 @@ fun GameScreen(
     var screenWidth by remember { mutableStateOf(0f) }
     var screenHeight by remember { mutableStateOf(0f) }
 
-    var currentYLim by remember { mutableStateOf(0f)}
-
-    var pathPoints by remember { mutableStateOf(generateSinePath(screenHeight, screenWidth)) }
+    var pathPoints by remember { mutableStateOf(listOf(Offset(0f, 0f))) }
 
     if (loading && screenWidth > 0F && screenHeight > 0F) {
         loading = false
         ballX = screenWidth / 2
         ballY = screenHeight / 2
     }
-
-    var statusMessage by remember { mutableStateOf("") }
 
     LaunchedEffect(accelX, accelY) { //  run in bg!
         while (true) {
@@ -100,24 +123,30 @@ fun GameScreen(
             shadowOffsetX = -velocityX
             shadowOffsetY = -velocityY
 
-            val s = pathPoints.size
-            Log.d("GameScreen", "ballY: $s")
+            Log.d("hi", pathPoints.size.toString() + " " + -ballY + " " + pathPoints.last().y)
 
-            if (ballY < currentYLim && pathPoints.isNotEmpty()) {
-                currentYLim -= screenHeight
-                val path = generateCosWave(pathPoints[pathPoints.size - 1], screenHeight, screenWidth)
-                pathPoints = pathPoints + path
+            if (pathPoints.isNotEmpty() && -ballY > pathPoints.last().y - screenHeight) {
+                val lineGenerators = listOf(
+                    { generateVerticalLine(screenHeight, pathPoints.last()) },
+                    { generateAngleLine(screenHeight, screenWidth, pathPoints.last(), (0..1).random() == 1) },
+                    { generateHorizontalLine(screenWidth, pathPoints.last(), (0..1).random() == 1) }
+                )
+                pathPoints += lineGenerators.random().invoke()
             }
 
-            if (pathPoints.size > 6000) {
-                pathPoints = pathPoints.drop(50)
+            if (pathPoints.size > 20) {
+                pathPoints = pathPoints.drop(1)
             }
+
             delay(16L) // 60 FPS (update rate)
         }
     }
 
     LaunchedEffect(Unit) {
-        pathPoints = generateCosWave(Offset(screenHeight / 2, screenWidth / 2), screenHeight, screenWidth)
+        pathPoints = generateVerticalLine(screenHeight, Offset(0F, 0F))
+        pathPoints += generateAngleLine(screenHeight, screenWidth, pathPoints.last(), false)
+        pathPoints += generateAngleLine(screenHeight, screenWidth, pathPoints.last(), true)
+        pathPoints += generateHorizontalLine(screenWidth, pathPoints.last(),(0..1).random() == 1)
     }
 
     Box(
@@ -136,9 +165,14 @@ fun GameScreen(
             for (i in 0 until pathPoints.size - 1) {
                 drawLine(
                     color = Color.Black,
-                    start = Offset(pathPoints[i].x + ballX - 500, pathPoints[i].y + ballY),
-                    end = Offset(pathPoints[i+1].x + ballX - 500, pathPoints[i+1].y + ballY),
+                    start = Offset(pathPoints[i].x + ballX, pathPoints[i].y + ballY),
+                    end = Offset(pathPoints[i+1].x + ballX, pathPoints[i+1].y + ballY),
                     strokeWidth = 250f
+                )
+                drawCircle(
+                    color = Color.Black,
+                    center = Offset(pathPoints[i].x + ballX, pathPoints[i].y + ballY),
+                    radius = 125F
                 )
             }
         }
@@ -152,9 +186,6 @@ fun GameScreen(
                 radius = ballRadiusPx,
                 center = Offset(size.width / 2, size.height / 2)
             )
-        }
-        Column {
-            Text(statusMessage, color = Color.Green)
         }
     }
 
