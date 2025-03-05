@@ -1,5 +1,6 @@
 package com.zybooks.letsroll.ui
 
+import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -29,8 +30,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.BasicAlertDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.*
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -40,6 +46,9 @@ import com.zybooks.letsroll.ui.theme.pastelRed
 import com.zybooks.letsroll.ui.theme.pastelYellow
 
 import kotlinx.coroutines.delay
+import kotlin.math.abs
+import kotlin.math.max
+
 
 @Composable
 fun Ball(
@@ -64,7 +73,14 @@ fun Ball(
     var screenHeight by remember { mutableStateOf(0f) }
 
     LaunchedEffect(accelX, accelY) {
-        while (true) {
+        accelerationViewModel.canAccelerate = true
+        while (accelerationViewModel.canAccelerate) {
+            if ((abs(accelerationViewModel.oCenterX - ballX) < 10) && (abs(accelerationViewModel.oCenterY - ballY) < 10)) {
+                ballX = accelerationViewModel.oCenterX
+                ballY = accelerationViewModel.oCenterY
+                accelerationViewModel.canAccelerate = false
+                break;
+            }
             velocityX += accelX * 0.5f
             velocityY += accelY * 0.5f
             velocityX *= 0.9f
@@ -89,6 +105,7 @@ fun Ball(
                 ballY = screenHeight - ballRadiusPx
                 velocityY = -velocityY
             }
+
 
             delay(16L) // 60 FPS (update rate)
         }
@@ -119,12 +136,14 @@ fun Ball(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Screen(
     accelerationViewModel: AccelerationViewModel = viewModel(
         factory = AccelerationViewModel.Factory
     ),
-    startGame: () -> Unit
+    startGame: () -> Unit,
+    appPreferences: State<AppPreferences>
 ){
     var alertDialog by remember { mutableStateOf("") }
     Column(
@@ -152,7 +171,12 @@ fun Screen(
                     lineHeight = 220.sp,
                 )
                 Canvas(modifier = Modifier
-                    .size(80.dp))
+                    .size(80.dp)
+                    .onGloballyPositioned { coordinates ->
+                        val position = coordinates.positionInRoot()
+                        accelerationViewModel.oCenterX = position.x + coordinates.size.width / 2
+                        accelerationViewModel.oCenterY = position.y + coordinates.size.height / 2
+                    })
                 {
                     drawCircle(
                         color = Color.White,
@@ -175,6 +199,7 @@ fun Screen(
                 onClick = { startGame() },
                 colors = ButtonDefaults.buttonColors(containerColor = pastelBlue),
                 shape = RoundedCornerShape(5.dp),
+                enabled = !accelerationViewModel.canAccelerate,
                 modifier = Modifier
                     .padding(5.dp)
                     .width(310.dp)
@@ -208,7 +233,6 @@ fun Screen(
             }
         }
         if (alertDialog == "S") {
-            accelerationViewModel.canAccelerate = false;
             AlertDialog(
                 title = {
                     Text(text = "Settings")
@@ -220,21 +244,52 @@ fun Screen(
                     }
                 }
             )
+
         } else if (alertDialog == "H") {
-            accelerationViewModel.canAccelerate = false;
-            AlertDialog(
-                title = {
-                    Text(text = "High Score")
-                },
-                onDismissRequest = { alertDialog = "" },
-                confirmButton = {
-                    Button(onClick = { alertDialog = "" }) {
-                        Text(text = "X")
+//            AlertDialog(
+//                title = {
+//                    Text(text = "High Score")
+//                },
+//                onDismissRequest = { alertDialog = "" },
+//                confirmButton = {
+//                    Button(onClick = { alertDialog = "" }) {
+//                        Text(text = "X")
+//                    }
+//                },
+//                text = { Text(appPreferences.value.highScore.toString()) }
+//            )
+            val configuration = LocalConfiguration.current
+            val screenWidth = configuration.screenWidthDp.dp
+            val screenHeight = configuration.screenHeightDp.dp
+            BasicAlertDialog(
+                onDismissRequest = {},
+                content = {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .wrapContentSize(Alignment.Center) // Centers the content in the Box
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .width(screenWidth / 3 * 2)
+                                .height(screenHeight / 3)
+                                .background(Color.White, shape = RoundedCornerShape(10.dp)) // Optional: Add background color
+                        ) {
+                            Column(
+                                verticalArrangement = Arrangement.Center,
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                Text(
+                                    text = "GAME OVER",
+                                    fontSize = 35.sp,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                            }
+                        }
                     }
                 }
             )
-        } else {
-            accelerationViewModel.canAccelerate = true;
         }
     }
 }
@@ -245,10 +300,11 @@ fun HomeScreen(
     viewModel: AccelerationViewModel = viewModel(
         factory = AccelerationViewModel.Factory
     ),
-    startGame: () -> (Unit)
+    startGame: () -> (Unit),
+    appPreferences: State<AppPreferences>
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
-        Screen(viewModel, startGame)
+        Screen(viewModel, startGame, appPreferences)
         Ball(viewModel)
     }
 }

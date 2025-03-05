@@ -32,6 +32,9 @@ class AccelerationViewModel(
     var accelValues = mutableStateListOf(0.0f, 0.0f, 0.0f)
     var canAccelerate by mutableStateOf(true)
 
+    var oCenterX by mutableStateOf(0f)
+    var oCenterY by mutableStateOf(0f)
+
     fun startListening() {
         accelerometerSensor.startListening { values ->
             accelValues.clear()
