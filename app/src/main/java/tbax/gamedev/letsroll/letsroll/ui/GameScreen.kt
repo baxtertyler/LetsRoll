@@ -1,14 +1,11 @@
-package com.zybooks.letsroll.ui
+package tbax.gamedev.letsroll.letsroll.ui
 
 import android.annotation.SuppressLint
-import android.graphics.Paint.Align
-import android.util.Log
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -29,14 +26,14 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.delay
 import kotlin.math.abs
 import kotlin.math.max
-import kotlin.math.min
-import kotlin.math.pow
 import kotlin.math.sqrt
-import com.zybooks.letsroll.ui.theme.backgroundColor
-import com.zybooks.letsroll.ui.theme.pastelBlue
-import com.zybooks.letsroll.ui.theme.pastelRed
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
+import tbax.gamedev.letsroll.letsroll.ui.theme.backgroundColor
+import tbax.gamedev.letsroll.letsroll.ui.theme.pastelBlue
+import tbax.gamedev.letsroll.letsroll.ui.theme.pastelRed
+import kotlin.math.atan
+import kotlin.math.roundToInt
+import kotlin.math.sin
+import kotlin.random.Random
 
 
 fun generateVerticalLine(
@@ -45,28 +42,12 @@ fun generateVerticalLine(
 ):List<Offset> {
     val points = mutableListOf<Offset>()
     points.add(startPoint)
-    points.add(Offset(startPoint.x, startPoint.y + screenHeight / 2))
-    return points
-}
-
-fun generateHorizontalLine(
-    screenWidth: Float,
-    startPoint: Offset,
-    toRight: Boolean,
-):List<Offset> {
-    val points = mutableListOf<Offset>()
-    points.add(startPoint)
-    if (toRight) {
-        points.add(Offset(startPoint.x + screenWidth, startPoint.y + 125))
-    } else {
-        points.add(Offset(startPoint.x - screenWidth, startPoint.y + 125))
-    }
+    points.add(Offset(startPoint.x, startPoint.y + screenHeight / 4))
     return points
 }
 
 fun generateBackAngleLine(
     screenHeight: Float,
-    screenWidth: Float,
     startPoint: Offset,
     openLeft: Boolean
 ):List<Offset> {
@@ -83,8 +64,35 @@ fun generateBackAngleLine(
     return points
 }
 
+fun generateAngleLine(
+    screenHeight: Float,
+    startPoint: Offset,
+): List<Offset> {
+    val points = mutableListOf<Offset>()
+    points.add(startPoint)
+    val y = listOf(screenHeight / 2, screenHeight / 4).random()
+    val x = Random.nextDouble(-y.toDouble(), y.toDouble()).toFloat()
+    points.add(Offset((startPoint.x + x), (startPoint.y + y)));
+    return points
+}
+
+fun generateZigZag(
+    screenHeight: Float,
+    startPoint: Offset,
+):List<Offset> {
+    val add = screenHeight / 8
+    val points = mutableListOf<Offset>()
+    points.add(startPoint)
+    points.add(Offset(startPoint.x + add, startPoint.y + add))
+    points.add(Offset(startPoint.x, startPoint.y + 2 * add))
+    points.add(Offset(startPoint.x + add, startPoint.y + 3 * add))
+    points.add(Offset(startPoint.x, startPoint.y + 4 * add))
+    points.add(Offset(startPoint.x + add, startPoint.y + 5 * add))
+    return points
+}
+
 fun check(ballX: Float, ballY: Float, p1: Offset, p2: Offset, radius: Float): Boolean {
-    return checkPath(ballX, ballY, p1, p2) // || checkCircle(ballX, ballY, p1, radius) || checkCircle(ballX, ballY, p2, radius)
+    return checkPath(ballX, ballY, p1, p2)
 }
 
 fun checkPath(ballX: Float, ballY: Float, p1: Offset, p2: Offset): Boolean {
@@ -96,14 +104,28 @@ fun checkPath(ballX: Float, ballY: Float, p1: Offset, p2: Offset): Boolean {
         val b = p1.y - m * p1.x
         return abs(m * ballX + b - ballY) < (125 * sqrt(2F))
     }
-    if (abs(p1.y - p2.y) == 125F) { // horizontal
-        return true
+    if (p1.x > p2.x) { // angle left
+        val m = (p2.y - p1.y) / (p2.x - p1.x)
+        val b = p1.y - m * p1.x
+        val h = p2.y - p1.y
+        val w = p1.x - p2.x
+        val maxX = 125.0 / sin(atan(h / w))
+        val currX = ballX - ((ballY - b) / m)
+        return ((abs(currX) - maxX) < 0)
+    }
+    if (p1.x < p2.x) { // angle right
+        val m = (p2.y - p1.y) / (p2.x - p1.x)
+        val b = p1.y - m * p1.x
+        val h = p2.y - p1.y
+        val w = p2.x - p1.x
+        val maxX = 125.0 / sin(atan(h/w))
+        val currX = ballX - ((ballY - b) / m)
+        return (abs(currX) - maxX) < 0
     }
     return false
 }
 
 fun checkCircle(ballX: Float, ballY: Float, p: Offset, r: Float): Boolean {
-    //("", sqrt((p.x - ballX) * (p.x - ballX) + (p.y - ballY) * (p.y - ballY)).toString())
     return sqrt((p.x - ballX) * (p.x - ballX) + (p.y - ballY) * (p.y - ballY)) < r
 }
 
@@ -117,7 +139,7 @@ fun GameScreen(
     complete: () -> (Unit),
     store: AppStorage,
     appPreferences: State<AppPreferences>,
-    coroutineScope: CoroutineScope,
+    settings: SettingsViewModel
 ) {
     var loading by remember { mutableStateOf(true)}
     var ballX by remember { mutableStateOf(0F) }
@@ -158,13 +180,10 @@ fun GameScreen(
 
         // Reset path points
         pathPoints = generateVerticalLine(screenHeight, Offset(0F, 0F))
-        pathPoints += generateBackAngleLine(screenHeight, screenWidth, pathPoints.last(), (0..1).random() == 1)
+        pathPoints += generateBackAngleLine(screenHeight, pathPoints.last(), (0..1).random() == 1)
 
         // Restart listening for accelerometer input
         accelerationViewModel.canAccelerate = true
-
-        // Reset game state
-
 
         if (goHome) {
             complete()
@@ -196,12 +215,14 @@ fun GameScreen(
             pseudoY += -velocityY
 
             if (pathPoints.isNotEmpty() && -ballY > pathPoints.last().y - screenHeight) {
-                val lineGenerators = listOf(
-                    { generateVerticalLine(screenHeight, pathPoints.last()) },
-                    { generateBackAngleLine(screenHeight, screenWidth, pathPoints.last(), (0..1).random() == 1) },
-                    //{ generateHorizontalLine(screenWidth, pathPoints.last(), (0..1).random() == 1) }
-                )
-                pathPoints += lineGenerators.random().invoke()
+                val nextPath = listOf(1, 2, 3, 4, 5, 6).random()
+                if (nextPath == 6) {
+                    pathPoints += generateBackAngleLine(screenHeight, pathPoints.last(), (0..1).random() == 1)
+                } else if (nextPath == 5) {
+                    pathPoints += generateZigZag(screenHeight, pathPoints.last())
+                } else {
+                    pathPoints += generateAngleLine(screenHeight / 2, pathPoints.last())
+                }
             }
 
             if (pathPoints.size > 50) {
@@ -214,8 +235,7 @@ fun GameScreen(
 
     LaunchedEffect(Unit) {
         pathPoints = generateVerticalLine(screenHeight, Offset(0F, 0F))
-        pathPoints += generateBackAngleLine(screenHeight, screenWidth, pathPoints.last(), (0..1).random() == 1)
-        //pathPoints += generateHorizontalLine(screenWidth, pathPoints.last(),(0..1).random() == 1)
+        pathPoints += generateBackAngleLine(screenHeight, pathPoints.last(), (0..1).random() == 1)
     }
 
     Box(
@@ -289,12 +309,8 @@ fun GameScreen(
         Canvas(modifier = Modifier.fillMaxSize()) {
             screenWidth = size.width
             screenHeight = size.height
-            var color: Color = Color.Red
-            if (ballOnPath) {
-                color = Color.Blue
-            }
             drawCircle(
-                color = color,
+                color = colorMap[settings.ballColor.roundToInt()] ?: Color.Blue,
                 radius = ballRadiusPx,
                 center = Offset(size.width / 2, size.height / 2)
             )
@@ -319,13 +335,13 @@ fun GameScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .wrapContentSize(Alignment.Center) // Centers the content in the Box
+                            .wrapContentSize(Alignment.Center)
                     ) {
                         Box(
                             modifier = Modifier
-                                .width(screenWidthDp / 3 * 2) // Set width to half of the screen width
-                                .height(screenHeightDp / 3) // Set height to half of the screen height
-                                .background(Color.White, shape = RoundedCornerShape(10.dp)) // Optional: Add background color
+                                .width(screenWidthDp / 3 * 2)
+                                .height(screenHeightDp / 3)
+                                .background(Color.White, shape = RoundedCornerShape(10.dp))
                         ) {
                             Column(
                                 verticalArrangement = Arrangement.Center,

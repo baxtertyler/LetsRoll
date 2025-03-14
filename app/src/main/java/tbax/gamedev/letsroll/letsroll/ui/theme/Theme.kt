@@ -1,6 +1,5 @@
-package com.zybooks.letsroll.ui.theme
+package tbax.gamedev.letsroll.letsroll.ui.theme
 
-import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme

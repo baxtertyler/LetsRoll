@@ -1,4 +1,4 @@
-package com.zybooks.letsroll.ui.theme
+package tbax.gamedev.letsroll.letsroll.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle

@@ -1,4 +1,4 @@
-package com.zybooks.letsroll.ui.theme
+package tbax.gamedev.letsroll.letsroll.ui.theme
 
 import androidx.compose.ui.graphics.Color
 

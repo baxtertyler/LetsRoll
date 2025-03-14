@@ -8,27 +8,30 @@ plugins {
 }
 
 android {
-    namespace = "com.zybooks.letsroll"
+    namespace = "tbax.gamedev.letsroll"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.zybooks.letsroll"
+        applicationId = "tbax.gamedev.letsroll"
         minSdk = 24
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
-
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isDebuggable = false
+            isShrinkResources = true
+            isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+        }
+        debug {
+            isDebuggable = true
         }
     }
     compileOptions {

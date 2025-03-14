@@ -1,4 +1,4 @@
-package com.zybooks.letsroll.sensor
+package tbax.gamedev.letsroll.letsroll.sensor
 
 import android.content.Context
 import android.content.pm.PackageManager
