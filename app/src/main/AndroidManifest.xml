@@ -3,7 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <application
-        android:name="tbax.gamedev.letsroll.LetsRollApplication"
+        android:name="tbax.gamedev.letsroll.letsroll.LetsRollApplication"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -12,10 +12,12 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.LetsRoll"
-        tools:targetApi="31">
+        tools:targetApi="31"
+            tools:ignore="DiscouragedApi">
         <activity
-            android:name="tbax.gamedev.letsroll.MainActivity"
+            android:name="tbax.gamedev.letsroll.letsroll.MainActivity"
             android:exported="true"
+            android:screenOrientation="portrait"
             android:theme="@style/Theme.LetsRoll">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
